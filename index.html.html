@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>警備サポート＆移動逆算ナビ</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --primary: #1e40af;
+      --primary-light: #dbeafe;
+      --danger: #dc2626;
+      --text: #1e293b;
+      --sub: #64748b;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px;
+      padding-bottom: 60px;
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(30, 64, 175, 0.2);
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      opacity: 0.9;
+      margin-bottom: 6px;
+    }
+    .clock {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .site-selector-wrap {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    select.site-select {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      border: none;
+      background: #fff;
+      color: var(--text);
+      min-width: 0;
+    }
+    .site-action-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      justify-content: flex-end;
+    }
+    .btn-small {
+      border: none;
+      border-radius: 6px;
+      padding: 7px 11px;
+      font-weight: bold;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-add { background: #fbbf24; color: #1e293b; }
+    .btn-edit { background: #e2e8f0; color: #1e293b; }
+    .btn-del { background: #fee2e2; color: #dc2626; }
+
+    /* カード共通 */
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--primary-light);
+      padding-bottom: 6px;
+    }
+
+    /* 情報行 */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 95px 1fr;
+      row-gap: 8px;
+      align-items: center;
+      font-size: 0.92rem;
+    }
+    .info-label { color: var(--sub); font-weight: bold; }
+    .info-val { font-weight: 600; word-break: break-all; }
+    .highlight-time {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--danger);
+      background: #fee2e2;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    /* 暗証番号チラ見ボタン */
+    .pin-area {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed var(--border);
+      margin-top: 8px;
+    }
+    .pin-display {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--primary);
+      font-family: monospace;
+    }
+    .btn-peek {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: pointer;
+    }
+    .btn-peek:active { background: #dc2626; }
+
+    /* マップ＆乗換連携ボタン */
+    .map-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .btn-map {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.93rem;
+      font-weight: 800;
+      cursor: pointer;
+      color: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+    }
+    .btn-map:active { opacity: 0.85; transform: translateY(1px); }
+    .btn-map-route { background: #2563eb; }
+    .btn-map-yahoo { background: #dc2626; font-size: 0.88rem; padding: 11px; }
+    .btn-map-pin { background: #059669; }
+    .btn-calendar { background: #0284c7; }
+    .btn-notebook { background: #7c3aed; } /* 鮮やかなパープル色 */
+
+    /* カレンダー登録エリア */
+    .cal-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .cal-date-input {
+      flex: 1;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+    .btn-date-quick {
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* 時刻表リスト */
+    .timetable {
+      margin-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+    }
+    .train-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 5px;
+      background: #f8fafc;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .train-row:hover { border-color: #94a3b8; }
+    .train-row.recommended {
+      background: #fef9c3;
+      border: 2px solid #eab308;
+      font-weight: bold;
+    }
+    .train-time {
+      font-size: 1.05rem;
+      font-weight: 800;
+      width: 72px;
+      color: var(--primary);
+    }
+    .train-note {
+      flex: 1;
+      font-size: 0.82rem;
+      color: #334155;
+    }
+
+    /* ルール箇条書き */
+    .rule-list {
+      list-style: none;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .rule-list li {
+      padding: 5px 0;
+      border-bottom: 1px dotted #e2e8f0;
+    }
+
+    /* モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      padding: 16px;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.82rem; font-weight: bold; margin-bottom: 3px; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem;
+    }
+    .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-save { flex: 1; background: var(--primary); color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #cbd5e1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- 上部ヘッダー＆現場選択 -->
+  <div class="header">
+    <div class="header-top">
+      <span id="dateDisplay">----年--月--日（-）</span>
+      <span class="clock" id="clockDisplay">--:--:--</span>
+    </div>
+    <div class="site-selector-wrap">
+      <select id="siteSelect" class="site-select" onchange="onSiteChange()"></select>
+    </div>
+    <div class="site-action-bar">
+      <button type="button" class="btn-small btn-add" onclick="openModal('add')">＋ 新規追加</button>
+      <button type="button" class="btn-small btn-edit" onclick="openModal('edit')">✏️ 編集</button>
+      <button type="button" class="btn-small btn-del" onclick="deleteCurrentSite()">🗑️ 削除</button>
+    </div>
+  </div>
+
+  <!-- ① 移動・ルート逆算 ＆ Googleマップ連携カード -->
+  <div class="card">
+    <div class="card-title">
+      <span>🚃 村野駅発・移動逆算ナビ</span>
+      <span style="font-size:0.78rem; color:var(--sub);">出発駅：村野（固定）</span>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-label">📍 住所</div>
+      <div class="info-val" id="siteAddress">-</div>
+
+      <div class="info-label">🏢 業者/担当</div>
+      <div class="info-val" id="siteCompany">-</div>
+
+      <div class="info-label">⏰ 集合/配置</div>
+      <div class="info-val" id="siteGather">-</div>
+
+      <div class="info-label">🚃 出発時間</div>
+      <div class="info-val">
+        <span class="highlight-time" id="siteDepart">--:--</span>
+        <span style="font-size:0.85rem;">（所要: <span id="siteDuration">--</span>）</span>
+      </div>
+    </div>
+
+    <!-- ワンタップ起動ボタン群 -->
+    <div class="map-btn-group">
+      <button type="button" class="btn-map btn-map-route" onclick="openGoogleTransit()">
+        🚆 Googleマップ [村野駅 <span id="btnTimeLabel">--:--</span>発] で開く
+      </button>
+      <button type="button" class="btn-map btn-map-yahoo" onclick="openYahooTransit()">
+        ⏱️ 時間ズレなし！Yahoo!乗換案内 [<span id="btnYahooTimeLabel">--:--</span>発] で開く
+      </button>
+      <button type="button" class="btn-map btn-map-pin" onclick="openGooglePin()">
+        🗺️ 現場の周辺地図（ピン）をマップで見る
+      </button>
+      <button type="button" class="btn-map btn-notebook" onclick="openNotebookChat()">
+        📓 Gemini Notebook（警備員）で質問・チャット
+      </button>
+    </div>
+
+    <!-- 村野駅マイ時刻表 -->
+    <div class="timetable">
+      <div style="font-size:0.82rem; font-weight:bold; color:var(--sub); margin-bottom:6px;">
+        🕒 村野駅（枚方市行）平日6〜7時台マイ時刻表 <span style="font-weight:normal; font-size:0.75rem;">(タップで出発時間を切替)</span>
+      </div>
+      <div id="timetableList"></div>
+      <div style="font-size:0.78rem; color:#475569; margin-top:6px;">
+        💡 交通系ICメモ：京阪バスは全路線でモバイルSuica利用OK
+      </div>
+    </div>
+  </div>
+
+  <!-- ② Googleカレンダー（終日・バイト）登録カード -->
+  <div class="card">
+    <div class="card-title">
+      <span>📅 Googleカレンダーへ現場を記録</span>
+      <span style="font-size:0.75rem; background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px;">終日 / バイト</span>
+    </div>
+    <div class="cal-row">
+      <input type="date" id="calDate" class="cal-date-input" onchange="updateCalendarPreview()">
+      <button type="button" class="btn-date-quick" onclick="setCalDateOffset(0)">今日</button>
+      <button type="button" class="btn-date-quick" onclick="setCalDateOffset(1)">明日</button>
+    </div>
+    <div style="font-size:0.82rem; color:var(--sub); margin-bottom:10px;">
+      登録タイトル：<strong style="color:var(--text);" id="calPreviewTitle">現場名</strong>（終日）
+    </div>
+    <button type="button" class="btn-map btn-calendar" onclick="openGoogleCalendar()">
+      📅 Googleカレンダーに「終日」で記入する
+    </button>
+  </div>
+
+  <!-- ③ 暗証番号 ＆ 現場別ローカルルールカード -->
+  <div class="card">
+    <div class="card-title">
+      <span>🔐 暗証番号 ＆ ローカルルール</span>
+    </div>
+
+    <div class="pin-area">
+      <div>
+        <div style="font-size:0.75rem; color:var(--sub); font-weight:bold;">フェンスの鍵 / 暗証番号</div>
+        <div class="pin-display" id="pinDisplay">＊＊＊＊</div>
+      </div>
+      <button type="button" class="btn-peek" id="btnPeek">🔑 押している間だけ表示</button>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <div style="font-size:0.82rem; font-weight:bold; color:var(--sub); margin-bottom:4px;">📋 この現場の常時ルール・メモ</div>
+      <ul class="rule-list" id="siteRules"></ul>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:16px;">
+    <button type="button" onclick="resetAllData()" style="background:none; border:none; color:#64748b; text-decoration:underline; font-size:0.78rem; cursor:pointer;">
+      🔄 初期データにリセットする
+    </button>
+  </div>
+
+  <!-- 現場を追加・編集するモーダル -->
+  <div class="modal" id="siteModal">
+    <div class="modal-content">
+      <h3 id="modalTitle" style="margin-bottom:10px; color:var(--primary);">＋ 新しい現場を追加</h3>
+      <div class="form-group">
+        <label>現場名（例：サンケイテクノ）</label>
+        <input type="text" id="inName" placeholder="現場名を入力">
+      </div>
+      <div class="form-group">
+        <label>住所（コピペでOK！〒番号が入っていても自動整形します）</label>
+        <input type="text" id="inAddress" placeholder="例：大阪市北区西天満6丁目3-7">
+      </div>
+      <div class="form-group">
+        <label>業者名・担当者メモ</label>
+        <input type="text" id="inCompany" placeholder="例：サンケイテクノ / 木村所長">
+      </div>
+      <div class="form-group">
+        <label>集合・配置時間</label>
+        <input type="text" id="inGather" value="07:45 集合 / 08:00 配置">
+      </div>
+      <div class="form-group">
+        <label>出発時間（村野駅）</label>
+        <input type="text" id="inDepart" value="06:17">
+      </div>
+      <div class="form-group">
+        <label>所要時間の目安</label>
+        <input type="text" id="inDuration" value="約80分">
+      </div>
+      <div class="form-group">
+        <label>暗証番号（なければ空欄）</label>
+        <input type="text" id="inPin" placeholder="例：118">
+      </div>
+      <div class="form-group">
+        <label>現場のルール・注意点（改行で複数入力可）</label>
+        <textarea id="inRules" rows="3" placeholder="例：誘導棒不可、赤白旗必須"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">キャンセル</button>
+        <button type="button" class="btn-save" onclick="saveSiteModal()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'ryoji_keibi_sites_v3';
+
+    const muranoTrains = [
+      { time: "06:02", note: "普通 枚方市行" },
+      { time: "06:17", note: "💡枚方市で空いている淀屋橋行特急に乗換可！" },
+      { time: "06:29", note: "普通 枚方市行" },
+      { time: "06:40", note: "★天王寺エリア(8:00着)・寝屋川方面の基準便" },
+      { time: "06:52", note: "普通 枚方市行" },
+      { time: "07:02", note: "★野田現場(7:59着) 黄金ルート基準便（枚方市7:16快急へ）" },
+      { time: "07:09", note: "普通 枚方市行" },
+      { time: "07:16", note: "普通 枚方市行" }
+    ];
+
+    const defaultSites = [
+      {
+        id: "sankei",
+        name: "サンケイビルテクノ（西天満）",
+        address: "大阪府大阪市北区西天満6丁目3-7 J・Tビル",
+        company: "サンケイテクノ",
+        gather: "07:45 集合 / 08:00 配置",
+        depart: "06:17",
+        duration: "約80分",
+        pin: "なし",
+        rules: [
+          "🏢 事務所：大阪市北区西天満6-3-7 J・Tビル（木村所長 / こさかさん）",
+          "💡 06:17発に乗ると枚方市で空いている淀屋橋行特急に乗換可能"
+        ]
+      },
+      {
+        id: "yuhara",
+        name: "阿倍野・ユハラ現場（常駐）",
+        address: "大阪市阿倍野区天王寺町北",
+        company: "共同住宅新築工事（12階建）",
+        gather: "07:45 集合 / 08:00 配置",
+        depart: "06:40",
+        duration: "約80分（1時間20分）",
+        pin: "118",
+        rules: [
+          "🔑 フェンスの鍵暗証番号は「118」",
+          "📅 【水曜】13:15頃：お向かいさんが自宅問診のため家の前に駐車（医師来訪・約10分）",
+          "📅 【金曜】09:00頃：お向かいのおばあさんのデイサービス送迎車が来る",
+          "⚠️ 【8:30〜9:50頃】デイサービスとは無関係な車が約1時間半路上駐車し道幅を圧迫する傾向あり"
+        ]
+      },
+      {
+        id: "richmond",
+        name: "天王寺・ホテルリッチモンド/醍醐",
+        address: "大阪市天王寺区茶臼山町2-18",
+        company: "HIRAYAMA（ヒラヤマ解体工事）",
+        gather: "07:45 集合 / 08:00 配置",
+        depart: "06:40",
+        duration: "約80分（1時間20分）",
+        pin: "なし",
+        rules: [
+          "🚃 天王寺エリア鉄板スケジュール（06:40発 ➔ 08:00前着）",
+          "💡 早く着きたい日は06:17村野発（枚方市で空いてる特急に乗換）"
+        ]
+      },
+      {
+        id: "noda",
+        name: "野田現場",
+        address: "大阪市福島区野田",
+        company: "野田エリア現場",
+        gather: "07:59 野田駅着",
+        depart: "07:02",
+        duration: "57分（片道運賃 600円）",
+        pin: "なし",
+        rules: [
+          "🚆 黄金ルート：村野07:02発 ➔ 枚方市07:16発(通勤快急) ➔ 京橋07:36着/07:46発(環状線) ➔ 野田07:59着",
+          "💰 運賃メモ：片道600円"
+        ]
+      },
+      {
+        id: "moriguchi",
+        name: "守口市・バイセップス応援現場",
+        address: "守口市京阪本通1-1-4",
+        company: "㈱CVC / 現場担当：柴藤さん",
+        gather: "07:45 集合 / 08:00 配置（1名）",
+        depart: "06:40",
+        duration: "約50〜60分",
+        pin: "なし",
+        rules: [
+          "👤 現場担当：柴藤さん（㈱CVC）",
+          "📍 住所：守口市京阪本通1-1-4"
+        ]
+      },
+      {
+        id: "kinden",
+        name: "きんでん(kdk) 中央通信営業所",
+        address: "寝屋川市木屋町14-26",
+        company: "きんでん（kdk）",
+        gather: "08:00 配置目安",
+        depart: "06:40",
+        duration: "約50分",
+        pin: "なし",
+        rules: [
+          "🚨 【装備厳守】赤白旗が必須！（※誘導棒は使用不可）",
+          "📍 枚方営業所の場合は「枚方市田口5-1-1」"
+        ]
+      }
+    ];
+
+    let sites = [];
+    let currentIdx = 0;
+    let modalMode = 'add';
+
+    function cleanAddress(rawAddr) {
+      if (!rawAddr) return "";
+      return rawAddr
+        .replace(/〒?\s*\d{3}[-ー－]\d{4}/g, '')
+        .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+        .replace(/[−ー－]/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function loadSites() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            sites = parsed;
+          } else {
+            sites = JSON.parse(JSON.stringify(defaultSites));
+          }
+        } else {
+          sites = JSON.parse(JSON.stringify(defaultSites));
+        }
+      } catch (e) {
+        sites = JSON.parse(JSON.stringify(defaultSites));
+      }
+      refreshDropdown(0);
+    }
+
+    function saveToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sites));
+      } catch (e) {}
+    }
+
+    function refreshDropdown(selectIndex) {
+      const sel = document.getElementById('siteSelect');
+      sel.innerHTML = '';
+      sites.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = "📍 " + s.name;
+        sel.appendChild(opt);
+      });
+      if (selectIndex >= 0 && selectIndex < sites.length) {
+        currentIdx = selectIndex;
+      } else {
+        currentIdx = 0;
+      }
+      sel.value = currentIdx;
+    }
+
+    function onSiteChange() {
+      const sel = document.getElementById('siteSelect');
+      currentIdx = parseInt(sel.value, 10) || 0;
+      renderSite();
+    }
+
+    function getTargetDateWithTime(timeStr) {
+      const m = (timeStr || "").match(/(\d{1,2}):(\d{2})/);
+      const target = new Date();
+      let hh = 6, mm = 40;
+      if (m) {
+        hh = parseInt(m[1], 10);
+        mm = parseInt(m[2], 10);
+      }
+      target.setHours(hh, mm, 0, 0);
+      if (target.getTime() < Date.now() - 5 * 60 * 1000) {
+        target.setDate(target.getDate() + 1);
+      }
+      return { target, hh, mm };
+    }
+
+    // 🚆 Googleマップで指定時刻ルートを開く
+    function openGoogleTransit() {
+      const site = sites[currentIdx];
+      if (!site) return;
+      const dest = cleanAddress(site.address);
+      const { target } = getTargetDateWithTime(site.depart);
+      const unixSec = Math.floor(target.getTime() / 1000);
+      const encOrig = encodeURIComponent("村野駅");
+      const encDest = encodeURIComponent(dest);
+      const url = `https://www.google.com/maps/dir/${encOrig}/${encDest}/data=!4m6!4m5!2m3!6e0!7e2!8j${unixSec}!3e3`;
+      window.open(url, '_blank');
+    }
+
+    // ⏱️ Yahoo!乗換案内で指定時刻ルートを開く
+    function openYahooTransit() {
+      const site = sites[currentIdx];
+      if (!site) return;
+      const dest = cleanAddress(site.address);
+      const { target, hh, mm } = getTargetDateWithTime(site.depart);
+      const y = target.getFullYear();
+      const mo = String(target.getMonth() + 1).padStart(2, '0');
+      const d = String(target.getDate()).padStart(2, '0');
+      const hStr = String(hh).padStart(2, '0');
+      const m1 = String(Math.floor(mm / 10));
+      const m2 = String(mm % 10);
+      const url = `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent("村野")}&to=${encodeURIComponent(dest)}&y=${y}&m=${mo}&d=${d}&hh=${hStr}&m1=${m1}&m2=${m2}&type=1`;
+      window.open(url, '_blank');
+    }
+
+    // 🗺️ 現場の周辺地図（ピン）を開く
+    function openGooglePin() {
+      const site = sites[currentIdx];
+      if (!site) return;
+      const dest = cleanAddress(site.address);
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dest)}`;
+      window.open(url, '_blank');
+    }
+
+    // 📓 Gemini Notebook（警備員）を別タブで開く
+    function openNotebookChat() {
+      const notebookUrl = "https://gemini.google.com/notebook/2421135f-d313-4c06-bfef-6ec935d11b74";
+      window.open(notebookUrl, '_blank');
+    }
+
+    // 📅 Googleカレンダー（終日・タイトルは現場名のみ）を開く
+    function setCalDateOffset(offsetDays) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      document.getElementById('calDate').value = `${yyyy}-${mm}-${dd}`;
+      updateCalendarPreview();
+    }
+
+    function updateCalendarPreview() {
+      const site = sites[currentIdx];
+      if (!site) return;
+      document.getElementById('calPreviewTitle').textContent = site.name;
+    }
+
+    function openGoogleCalendar() {
+      const site = sites[currentIdx];
+      if (!site) return;
+      const dateVal = document.getElementById('calDate').value;
+      let startDate = new Date();
+      if (dateVal) {
+        const parts = dateVal.split('-');
+        startDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      }
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1); // 終日は翌日指定
+
+      const fmt = (dt) => `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+      const datesParam = `${fmt(startDate)}/${fmt(endDate)}`;
+
+      // タイトルは【バイト】を付けず現場名のみ
+      const title = site.name;
+      const details = [
+        `カテゴリー：バイト`,
+        `現場名：${site.name}`,
+        `業者/担当：${site.company}`,
+        `集合/配置：${site.gather}`,
+        `村野駅 出発時間：${site.depart}（所要：${site.duration}）`
+      ].join('\n');
+
+      const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${datesParam}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(cleanAddress(site.address))}`;
+      window.open(calUrl, '_blank');
+    }
+
+    // 時計表示
+    function updateClock() {
+      const now = new Date();
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayName = days[now.getDay()];
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const d = now.getDate();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+
+      document.getElementById('dateDisplay').textContent = `${y}年${m}月${d}日（${dayName}）`;
+      document.getElementById('clockDisplay').textContent = `${hh}:${mm}:${ss}`;
+    }
+
+    function selectTrainTime(newTime) {
+      if (!sites[currentIdx]) return;
+      sites[currentIdx].depart = newTime;
+      saveToStorage();
+      renderSite();
+    }
+
+    function renderSite() {
+      const site = sites[currentIdx];
+      if (!site) return;
+
+      document.getElementById('siteAddress').textContent = site.address;
+      document.getElementById('siteCompany').textContent = site.company;
+      document.getElementById('siteGather').textContent = site.gather;
+      document.getElementById('siteDepart').textContent = site.depart;
+      document.getElementById('siteDuration').textContent = site.duration;
+      document.getElementById('btnTimeLabel').textContent = site.depart;
+      document.getElementById('btnYahooTimeLabel').textContent = site.depart;
+
+      // 時刻表ハイライト描画
+      const ttContainer = document.getElementById('timetableList');
+      ttContainer.innerHTML = '';
+      muranoTrains.forEach(t => {
+        const isRec = (t.time === site.depart);
+        const row = document.createElement('div');
+        row.className = 'train-row' + (isRec ? ' recommended' : '');
+        row.onclick = () => selectTrainTime(t.time);
+        row.innerHTML = `
+          <div class="train-time">${isRec ? '👉 ' : ''}${t.time}</div>
+          <div class="train-note">${t.note}</div>
+        `;
+        ttContainer.appendChild(row);
+      });
+
+      document.getElementById('pinDisplay').textContent = '＊＊＊＊';
+
+      const rulesUl = document.getElementById('siteRules');
+      rulesUl.innerHTML = '';
+      (site.rules || []).forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        rulesUl.appendChild(li);
+      });
+
+      updateCalendarPreview();
+      updateClock();
+    }
+
+    // 暗証番号チラ見
+    const btnPeek = document.getElementById('btnPeek');
+    const pinDisp = document.getElementById('pinDisplay');
+    function showPin() {
+      pinDisp.textContent = sites[currentIdx]?.pin || 'なし';
+    }
+    function hidePin() {
+      pinDisp.textContent = '＊＊＊＊';
+    }
+    btnPeek.addEventListener('mousedown', showPin);
+    btnPeek.addEventListener('mouseup', hidePin);
+    btnPeek.addEventListener('mouseleave', hidePin);
+    btnPeek.addEventListener('touchstart', (e) => { e.preventDefault(); showPin(); });
+    btnPeek.addEventListener('touchend', hidePin);
+
+    // 現場の追加・編集・削除
+    function openModal(mode) {
+      modalMode = mode;
+      const modal = document.getElementById('siteModal');
+      if (mode === 'edit') {
+        const site = sites[currentIdx];
+        document.getElementById('modalTitle').textContent = '✏️ この現場を編集';
+        document.getElementById('inName').value = site.name || '';
+        document.getElementById('inAddress').value = site.address || '';
+        document.getElementById('inCompany').value = site.company || '';
+        document.getElementById('inGather').value = site.gather || '';
+        document.getElementById('inDepart').value = site.depart || '';
+        document.getElementById('inDuration').value = site.duration || '';
+        document.getElementById('inPin').value = site.pin || '';
+        document.getElementById('inRules').value = (site.rules || []).join('\n');
+      } else {
+        document.getElementById('modalTitle').textContent = '＋ 新しい現場を追加';
+        document.getElementById('inName').value = '';
+        document.getElementById('inAddress').value = '';
+        document.getElementById('inCompany').value = '';
+        document.getElementById('inGather').value = '07:45 集合 / 08:00 配置';
+        document.getElementById('inDepart').value = '06:17';
+        document.getElementById('inDuration').value = '約80分';
+        document.getElementById('inPin').value = '';
+        document.getElementById('inRules').value = '';
+      }
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('siteModal').style.display = 'none';
+    }
+
+    function saveSiteModal() {
+      const name = document.getElementById('inName').value.trim();
+      const address = cleanAddress(document.getElementById('inAddress').value);
+      if (!name || !address) {
+        alert('「現場名」と「住所」を入力してください');
+        return;
+      }
+      const departTime = document.getElementById('inDepart').value.trim() || '06:40';
+      const siteData = {
+        id: modalMode === 'edit' ? (sites[currentIdx]?.id || 'custom_' + Date.now()) : 'custom_' + Date.now(),
+        name: name,
+        address: address,
+        company: document.getElementById('inCompany').value.trim() || '-',
+        gather: document.getElementById('inGather').value.trim() || '07:45 集合',
+        depart: departTime,
+        duration: document.getElementById('inDuration').value.trim() || '-',
+        pin: document.getElementById('inPin').value.trim() || 'なし',
+        rules: document.getElementById('inRules').value.split('\n').filter(Boolean)
+      };
+
+      if (modalMode === 'edit') {
+        sites[currentIdx] = siteData;
+        saveToStorage();
+        refreshDropdown(currentIdx);
+      } else {
+        sites.push(siteData);
+        saveToStorage();
+        refreshDropdown(sites.length - 1);
+      }
+      renderSite();
+      closeModal();
+    }
+
+    function deleteCurrentSite() {
+      if (sites.length <= 1) {
+        alert('最後の1件は削除できません');
+        return;
+      }
+      const site = sites[currentIdx];
+      if (confirm(`「${site.name}」を削除してもよろしいですか？`)) {
+        sites.splice(currentIdx, 1);
+        saveToStorage();
+        refreshDropdown(0);
+        renderSite();
+      }
+    }
+
+    function resetAllData() {
+      if (confirm('登録データを初期状態にリセットしますか？')) {
+        localStorage.removeItem(STORAGE_KEY);
+        loadSites();
+        renderSite();
+      }
+    }
+
+    // 初期化
+    loadSites();
+    setCalDateOffset(0);
+    renderSite();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
